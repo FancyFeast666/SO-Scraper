@@ -6,8 +6,8 @@ import os
 import pymupdf
 import numpy as np
 import time
+from PIL import Image
 
-from pymupdf.utils import scrub
 
 
 def selectFile():
@@ -29,10 +29,8 @@ def imageCreation(filename):
     imageSelection(num)
 
 def imageSelection( num):
-
-    global curPage, image_label, next_image, var
+    global curPage, image_label, next_image, var, check_page
     if curPage >= num:
-        print("rahhh")
         return
     image_file = "page-" + str(curPage) + ".png"
     img = tk.PhotoImage(file=image_file)
@@ -40,6 +38,7 @@ def imageSelection( num):
     image_label.image = img
     image_label.pack()
     var = tk.IntVar()
+    next_image = tk.Button(window)
     if curPage == num-1:
         next_image = tk.Button(window, text="Confirm Page Selections", command=confirmSelection)
     else:
@@ -51,28 +50,51 @@ def imageSelection( num):
 
 
 def page_scrub():
-    global curPage, scrub_matrix
+    global curPage, scrub_matrix, tables
     if var.get() ==1:
         new_data = [curPage, 0, 0]
         tables = tk.Entry(window)
         tables.pack()
+        rotate = tk.Button(window, text="Rotate 90 degrees", command=rotat)
+        rotate.pack()
         new_col = np.array(new_data).reshape(3,1)
         scrub_matrix = np.hstack((scrub_matrix, new_col))
     else:
         cols_to_remove = np.where(scrub_matrix[0, :] == curPage)[0]
         scrub_matrix = np.delete(scrub_matrix, cols_to_remove, axis=1)
-    print(scrub_matrix)
+        tables.delete(0, tk.END)
+        tables.forget()
 
+def rotat():
+    global image_label
+    rot_180= image_label.rotate(180)
+    rot_180.show()
 
 def pageConfirm():
-    global curPage, pages
+    global curPage, pages, var, scrub_matrix, tables
+    if var.get()==1:
+        try:
+            while int(tables.get()) < 0:
+                messagebox.showwarning("Invalid Tables", "The amount of tables must be greater than 0")
+                return
+        except Exception as e:
+            messagebox.showwarning("Invalid Entry", "Field can only take integers")
+        col_edit = np.where(scrub_matrix[0, :] == curPage)[0]
+        scrub_matrix[1, col_edit[0]] = tables.get()
     curPage +=1
     image_label.forget()
     next_image.forget()
+    tables.delete(0, tk.END)
+    tables.forget()
+    check_page.forget()
     imageSelection(pages)
+
 
 def confirmSelection():
     print("Hallo")
+
+
+
 if __name__ == "__main__":
     try:
         os.makedirs("tmpImages", mode=0o777, exist_ok=False)
@@ -85,9 +107,6 @@ if __name__ == "__main__":
     window = tk.Tk()
     window.title("SO-Scraper")
     window.geometry("1920x1080")
-
     selectFile = tk.Button(window, text="Upload File for Processing", command=selectFile)
     selectFile.grid(row=1, column=0, ipady=10)
-
-
     window.mainloop()
